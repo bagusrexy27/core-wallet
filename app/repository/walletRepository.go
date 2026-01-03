@@ -38,50 +38,6 @@ func (r *WalletRepository) CreateWallet(ctx context.Context, userId, walletId st
 	return wallet, nil
 }
 
-func (r *WalletRepository) TopUpBalance(ctx context.Context, userId, checksum, transactionType string, amount int64) error {
-	var wallet models.Wallet
-
-	tx := r.db.WithContext(ctx).Begin()
-
-	if err := tx.Where("user_id = ?", userId).First(&wallet).Error; err != nil {
-		tx.Rollback()
-		utils.ErrorLog("user_id not found", err, true)
-		return err
-	}
-
-	transaction := models.Transaction{
-		WalletID:      wallet.ID,
-		Type:          models.TransactionType(transactionType),
-		Amount:        amount,
-		BalanceBefore: wallet.Balance,
-		BalanceAfter:  wallet.Balance + amount,
-		Status:        models.TransactionStatusSuccess,
-	}
-
-	wallet.Balance += amount
-	wallet.Checksum = checksum
-
-	if err := tx.Save(&wallet).Error; err != nil {
-		tx.Rollback()
-		utils.ErrorLog("failed to save wallet", err, true)
-		return err
-	}
-
-	if err := tx.Create(&transaction).Error; err != nil {
-		tx.Rollback()
-		utils.ErrorLog("failed to create transaction", err, true)
-		return err
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		utils.ErrorLog("failed to commit transaction", err, true)
-		return err
-	}
-
-	return nil
-}
-
 func (r *WalletRepository) GetWalletById(walletId string) (*models.Wallet, error) {
 	var wallet models.Wallet
 	if err := r.db.Where("id = ?", walletId).First(&wallet).Error; err != nil {
@@ -91,7 +47,7 @@ func (r *WalletRepository) GetWalletById(walletId string) (*models.Wallet, error
 	return &wallet, nil
 }
 
-func (r *WalletRepository) ConfirmTopUpTransaction(ctx context.Context, transactionID, walletID string, transactionRepo *TransactionRepo) error {
+func (r *WalletRepository) ConfirmTransaction(ctx context.Context, transactionID, walletID string, transactionRepo *TransactionRepo) error {
 	tx := r.db.WithContext(ctx).Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -99,7 +55,7 @@ func (r *WalletRepository) ConfirmTopUpTransaction(ctx context.Context, transact
 		}
 	}()
 
-	transaction, err := transactionRepo.GetTransactionById(ctx, tx, transactionID, true)
+	transaction, err := transactionRepo.GetTransactionById(ctx, transactionID, true)
 	if err != nil {
 		tx.Rollback()
 		return err

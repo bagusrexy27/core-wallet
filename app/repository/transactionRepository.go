@@ -18,31 +18,43 @@ func NewTransactionRepository(db *gorm.DB) *TransactionRepo {
 	return &TransactionRepo{db: db}
 }
 
-func (r *TransactionRepo) GetTransactionById(ctx context.Context, tx *gorm.DB, transactionId string, lock bool) (*models.Transaction, error) {
-	if tx == nil {
-		tx = r.db
+func (r *TransactionRepo) GetTransactionById(ctx context.Context, transactionId string, lock bool) (*models.Transaction, error) {
+	tx := r.db.WithContext(ctx).Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if transactionId == "" {
+		return nil, errors.New("transaction id is required")
 	}
-
-	query := tx.WithContext(ctx)
-
 	if lock {
-		query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+		tx = tx.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
 
 	var transaction models.Transaction
-	if err := query.Where("id = ?", transactionId).First(&transaction).Error; err != nil {
+	if err := tx.Where("id = ?", transactionId).First(&transaction).Error; err != nil {
 		utils.ErrorLog("failed to get transaction by id", err, true)
 		return nil, err
 	}
 	return &transaction, nil
 }
 
-func (r *TransactionRepo) CreateTransaction(ctx context.Context, tx *gorm.DB, transaction *models.Transaction) error {
-	if tx == nil {
-		tx = r.db
+func (r *TransactionRepo) CreateTransaction(ctx context.Context, transaction *models.Transaction) error {
+	tx := r.db.WithContext(ctx).Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if transaction == nil {
+		transaction = &models.Transaction{}
 	}
 
 	if err := tx.WithContext(ctx).Create(transaction).Error; err != nil {
+		tx.Rollback()
 		utils.ErrorLog("failed to create transaction", err, true)
 		return err
 	}
@@ -63,7 +75,6 @@ func (r *TransactionRepo) UpdateTransaction(ctx context.Context, tx *gorm.DB, tr
 		return err
 	}
 
-	// Update status
 	transaction.Status = status
 
 	if err := tx.Save(&transaction).Error; err != nil {

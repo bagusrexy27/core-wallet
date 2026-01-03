@@ -41,7 +41,7 @@ func (h *TopUpHandler) TopUpRequest(ctx context.Context, request dto.TopUpReques
 		Status:        models.TransactionStatusPending,
 	}
 
-	if err = h.transactionRepo.CreateTransaction(ctx, nil, &transaction); err != nil {
+	if err = h.transactionRepo.CreateTransaction(ctx, &transaction); err != nil {
 		return "", err
 	}
 
@@ -49,7 +49,7 @@ func (h *TopUpHandler) TopUpRequest(ctx context.Context, request dto.TopUpReques
 }
 
 func (h *TopUpHandler) ConfirmTopUp(ctx context.Context, request dto.ConfirmTopUpRequest) error {
-	return h.walletRepo.ConfirmTopUpTransaction(ctx, request.TransactionID, request.WalletID, h.transactionRepo)
+	return h.walletRepo.ConfirmTransaction(ctx, request.TransactionID, request.WalletID, h.transactionRepo)
 }
 
 func (h *TopUpHandler) RejectTopUp(ctx context.Context, request dto.CheckStatusTopUpRequest) error {
@@ -57,5 +57,5 @@ func (h *TopUpHandler) RejectTopUp(ctx context.Context, request dto.CheckStatusT
 }
 
 func (h *TopUpHandler) CheckStatusTopUp(ctx context.Context, request dto.CheckStatusTopUpRequest) (*models.Transaction, error) {
-	return h.transactionRepo.GetTransactionById(ctx, nil, request.TransactionID, false)
+	return h.transactionRepo.GetTransactionById(ctx, request.TransactionID, false)
 }
