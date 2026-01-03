@@ -14,7 +14,7 @@ Simple wallet management service built with Go for managing user balances, top-u
 
 - Wallet creation and balance management
 - Top-up operations (request, confirm, reject)
-- Withdrawal operations (in development)
+- Withdrawal operations
 - Transaction history tracking
 - SHA256 checksum validation for data integrity
 
