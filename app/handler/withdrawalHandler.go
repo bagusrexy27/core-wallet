@@ -29,7 +29,7 @@ func (h *WithdrawalHandler) RequestWithdrawal(ctx context.Context, request dto.W
 		return "", err
 	}
 
-	if wallet.Balance < request.Amount {
+	if wallet.Balance < request.Amount || request.Amount <= 0 {
 		return "", errors.New("insufficient balance")
 	}
 
